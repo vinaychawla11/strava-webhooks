@@ -19,32 +19,31 @@ Features
 ## Setup
 1. Clone the Repository
 
-> git clone https://github.com/yourusername/strava-api-integration.git
+        git clone https://github.com/yourusername/strava-api-integration.git
 
-> cd strava-api-integration
+        cd strava-api-integration
 
 2. Install Dependencies
 
 
 
-> npm install
+        npm install
 
 3. Configure Environment Variables
 
-Create a .env file in the root of the project and add your Strava API credentials and other configuration details:
+**Create a .env file in the root of the project and add your Strava API credentials and other configuration details:**
 
+        CLIENT_ID=your_strava_client_id
 
-`CLIENT_ID=your_strava_client_id`
+        CLIENT_SECRET=your_strava_client_secret
 
-`CLIENT_SECRET=your_strava_client_secret`
+        REDIRECT_URI=your_redirect_uri
 
-`REDIRECT_URI=your_redirect_uri`
-
-`PORT=your_server_port`
+        PORT=your_server_port
 
 4. Run the Application
 
-> node app.js
+        node app.js
 
 The server will start listening on the specified port (default is 80).
 
