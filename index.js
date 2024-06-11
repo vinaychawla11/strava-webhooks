@@ -18,15 +18,15 @@ let accessToken;
 let refreshToken;
 let expiresAt;
 
-// Step 1: Redirect the user to Strava's authorization page
+// Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the strava authorization URL. Refer bottom of this page where the default URL is being routed to the /Authorize endpoint.
 app.get('/authorize', (req, res) => {
   const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
   res.redirect(authorizationUrl);
 });
 
-// Step 2: Handle the callback from Strava
+// Step 2: Handle the redirect Uri callback from Strava -  https://developers.strava.com/docs/authentication/
 app.get('/callback', async (req, res) => {
-  const authorizationCode = req.query.code;
+  const authorizationCode = req.query.code; // Store the code obtained from the strava POST request
 
   try {
     const response = await axios.post('https://www.strava.com/oauth/token', {
@@ -52,7 +52,7 @@ app.get('/callback', async (req, res) => {
   }
 });
 
-// Function to refresh the access token
+// Function to refresh the access token 
 async function refreshAccessToken() {
   try {
     const response = await axios.post('https://www.strava.com/oauth/token', {
@@ -96,7 +96,7 @@ EXPIRES_AT=${expiresAt}
   fs.writeFileSync('.env', envData);
 }
 
-// Schedule token refresh to run before expiration
+// Schedule token refresh to run before expiration every hour 
 cron.schedule('0 * * * *', async () => {
   const currentTime = Math.floor(Date.now() / 1000);
   if (currentTime >= expiresAt - 300) { // Refresh 5 minutes before expiration
@@ -104,7 +104,7 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
-// Endpoint to handle the initial activity creation event
+// Endpoint to handle the initial activity creation event and modify the activity if it meets the criteria - this is in reference to the strava webhook events API - https://developers.strava.com/docs/webhooks/
 app.post('/webhook', async (req, res) => {
   const aspectType = req.body.aspect_type;
   const objectId = req.body.object_id;
@@ -143,7 +143,7 @@ app.post('/webhook', async (req, res) => {
  
 });
 
-// Endpoint for verifying webhook
+// Endpoint for verifying webhook - Strava sends a request to this domain to see if the server is responsive before sending an event.
 app.get('/webhook', (req, res) => {
   const VERIFY_TOKEN = "STRAVA";
   const mode = req.query['hub.mode'];
