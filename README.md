@@ -9,14 +9,14 @@ Features
     Updating activity privacy based on distance and type
     Environmental variable management with .env file
 
-# Prerequisites
+## Prerequisites
 
     Node.js (>=12.x)
     npm (>=6.x)
     A Strava Developer account
     A registered Strava application
 
-# Setup
+## Setup
 1. Clone the Repository
 
 git clone https://github.com/yourusername/strava-api-integration.git
@@ -50,20 +50,20 @@ Authorization
 
     GET /authorize: Redirects the user to the Strava authorization URL.
 
-# Callback
+## Callback
 
     GET /callback: Handles the OAuth callback from Strava, exchanges the authorization code for access and refresh tokens, and stores them.
 
-# Webhook
+## Webhook
 
     GET /webhook: Verifies the webhook subscription with Strava.
     POST /webhook: Receives and processes webhook events from Strava, updates activity privacy based on criteria.
 
-# Root
+## Root
 
     GET /: Provides a link to start the authorization process.
 
-# Token Management
+## Token Management
 
 A cron job is scheduled to run every hour to check the token expiration and refresh it if necessary. Tokens and their expiration time are stored in the .env file.
 Webhook Event Handling
