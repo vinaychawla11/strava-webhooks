@@ -132,6 +132,9 @@ app.post('/webhook', async (req, res) => {
         );
         console.log('Privacy updated successfully');
       }
+      else{
+        console.log("Nothing to update here")
+      }
 
       return res.status(200).send('EVENT_RECEIVED');
     } catch (error) {
