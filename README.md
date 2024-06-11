@@ -45,8 +45,9 @@ PORT=your_server_port
 node app.js
 
 The server will start listening on the specified port (default is 80).
-Endpoints
-Authorization
+
+# Endpoints
+## Authorization
 
     GET /authorize: Redirects the user to the Strava authorization URL.
 
@@ -69,7 +70,8 @@ A cron job is scheduled to run every hour to check the token expiration and refr
 Webhook Event Handling
 
 The application processes create and update events from Strava to fetch activity details. If an activity is a "Ride" and its distance is less than 5 km, the privacy is updated.
-Example Usage
+
+## Example Usage
 
     Start the Authorization Process: Navigate to http://your-server-url/ and click the "Authorize with Strava" link.
 
