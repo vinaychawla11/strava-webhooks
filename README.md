@@ -76,3 +76,6 @@ Example Usage
     Complete Authorization: Authorize the application on Strava, which will redirect you back to your server.
 
     Webhook Events: Configure your Strava application to send webhook events to http://your-server-url/webhook.
+## License
+
+This project is licensed under the MIT License.
