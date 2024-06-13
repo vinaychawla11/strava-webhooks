@@ -4,25 +4,75 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const cron = require('node-cron');
+const winston = require('winston');
+const admin = require('firebase-admin');
 require('dotenv').config();
 
+
+// Initialize Firebase Admin SDK
+const serviceAccount = require('./serviceAccountKey.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = admin.firestore();
+const secretsDoc = db.collection('secrets').doc('strava-autohide-credentials');
 const app = express();
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const clientId = process.env.CLIENT_ID;
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+async function getSecrets() {
+  try {
+    const doc = await secretsDoc.get();
+    if (!doc.exists) {
+      throw new Error('No such document!');
+    }
+    return doc.data();
+  } catch (error) {
+    logger.error('Error retrieving secrets from Firestore', error);
+    throw error;
+  }
+}
+
+/* const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
 const redirectUri = process.env.REDIRECT_URI;
 let accessToken;
 let refreshToken;
-let expiresAt;
+let expiresAt; */
 
 // Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the strava authorization URL. Refer bottom of this page where the default URL is being routed to the /Authorize endpoint.
-app.get('/authorize', (req, res) => {
+/* app.get('/authorize', (req, res) => {
   const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
   res.redirect(authorizationUrl);
-});
+});*/
+
+(async () => {
+  const secrets = await getSecrets();
+  const clientId = secrets.clientId;
+  const clientSecret = secrets.clientSecret;
+  const redirectUri = secrets.redirectUri;
+  const port = secrets.port || 80;
+
+  let accessToken;
+  let refreshToken;
+  let expiresAt;
+
+  app.get('/authorize', (req, res) => {
+    const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
+    res.redirect(authorizationUrl);
+  });
 
 // Step 2: Handle the redirect Uri callback from Strava -  https://developers.strava.com/docs/authentication/
 app.get('/callback', async (req, res) => {
@@ -162,10 +212,12 @@ app.get('/webhook', (req, res) => {
 });
 
 // Sets server port and logs message on success
-const port = process.env.PORT || 80;
+//const port = process.env.PORT || 80;
 app.listen(port, () => console.log(`Webhook is listening on port ${port}`));
 
 // Manually invoke the authorization URL
 app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
+
+})();
