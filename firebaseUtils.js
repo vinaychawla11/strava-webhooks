@@ -2,11 +2,13 @@
 const admin = require('firebase-admin');
 require('dotenv').config();
 
-const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+
+//const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+const serviceAccount = require('./serviceAccountKey.json');
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccountKey)
+  credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
@@ -39,7 +41,7 @@ async function addNewUser(uid, userData) {
 // Function to fetch environment variables dynamically
 function getEnvVars() {
   return {
-    redirectUri: process.env.REDIRECT_URI,
+    redirectUri: process.env.REDIRECT_URI
     // Add more variables here as needed
   };
 }
