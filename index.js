@@ -4,7 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const cron = require('node-cron');
-const { getUserSecrets, updateUserSecrets, addNewUser, getEnvVars } = require('./firebaseUtils');
+const { getUserSecrets, updateUserSecrets, addNewUser, getEnvVars } = require('./firebaseUtils.js');
 const app = express();
 
 app.use(bodyParser.json());
