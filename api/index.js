@@ -148,7 +148,6 @@ app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
 
-mapp.use('/.netlify/functions/index', router);
+app.use('/.netlify/functions/index', router);
 
 module.exports = app;
-module.exports.handler = serverless(app);
