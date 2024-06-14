@@ -4,81 +4,47 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const cron = require('node-cron');
-const winston = require('winston');
-const admin = require('firebase-admin');
-require('dotenv').config();
-
-
-// Initialize Firebase Admin SDK
-const serviceAccount = require('../serviceAccountKey.json');
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-const db = admin.firestore();
-const secretsDoc = db.collection('secrets').doc('strava-autohide-credentials');
+const { getUserSecrets, updateUserSecrets, addNewUser, getEnvVars } = require('./firebaseUtils');
 const app = express();
-
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.json(),
-  transports: [
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
-});
-
-async function getSecrets() {
+// Middleware to authenticate requests using Firebase Authentication
+const authenticateUser = async (req, res, next) => {
   try {
-    const doc = await secretsDoc.get();
-    if (!doc.exists) {
-      throw new Error('No such document!');
-    }
-    return doc.data();
+    const idToken = req.headers.authorization.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.user = decodedToken;
+    next();
   } catch (error) {
-    logger.error('Error retrieving secrets from Firestore', error);
-    throw error;
+    console.error('Error authenticating user:', error);
+    res.status(401).send('Unauthorized');
   }
-}
+};
 
-/* const clientId = process.env.CLIENT_ID;
-const clientSecret = process.env.CLIENT_SECRET;
-const redirectUri = process.env.REDIRECT_URI;
-let accessToken;
-let refreshToken;
-let expiresAt; */
-
-// Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the strava authorization URL. Refer bottom of this page where the default URL is being routed to the /Authorize endpoint.
-/* app.get('/authorize', (req, res) => {
-  const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
-  res.redirect(authorizationUrl);
-});*/
-
-(async () => {
-  const secrets = await getSecrets();
-  const clientId = secrets.clientId;
-  const clientSecret = secrets.clientSecret;
-  const redirectUri = secrets.redirectUri;
-  const port = secrets.port || 80;
-
-  let accessToken;
-  let refreshToken;
-  let expiresAt;
-
-  app.get('/authorize', (req, res) => {
+// Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the Strava authorization URL.
+app.get('/authorize', authenticateUser, async (req, res) => {
+  const userId = req.user.uid; // Get the user's UID from the authentication context
+  // Retrieve user secrets from Firestore
+  try {
+    const { clientId, clientSecret, redirectUri } = await getUserSecrets(userId);
     const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
     res.redirect(authorizationUrl);
-  });
+  } catch (error) {
+    console.error('Error getting user secrets:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
 
-// Step 2: Handle the redirect Uri callback from Strava -  https://developers.strava.com/docs/authentication/
-app.get('/callback', async (req, res) => {
+// Step 2: Handle the redirect Uri callback from Strava
+app.get('/callback', authenticateUser, async (req, res) => {
+  const userId = req.user.uid; // Get the user's UID from the authentication context
   const authorizationCode = req.query.code; // Store the code obtained from the strava GET request
 
   try {
+    const { clientId, clientSecret } = await getUserSecrets(userId);
+
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
       client_secret: clientSecret,
@@ -86,25 +52,25 @@ app.get('/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    accessToken = response.data.access_token;
-    refreshToken = response.data.refresh_token;
-    expiresAt = response.data.expires_at;
-
-    console.log('Access Token:', accessToken);
-    console.log('Refresh Token:', refreshToken);
-    console.log('Expires At:', expiresAt);
+    // Update user secrets in Firestore with new tokens
+    await updateUserSecrets(userId, {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      expiresAt: response.data.expires_at,
+    });
 
     res.send('Authorization successful! You can now close this window.');
-
   } catch (error) {
     console.error('Error exchanging authorization code:', error);
     res.status(500).send('Internal Server Error');
   }
 });
 
-// Function to refresh the access token 
-async function refreshAccessToken() {
+// Function to refresh the access token
+async function refreshAccessToken(uid) {
   try {
+    const { clientId, clientSecret, refreshToken } = await getUserSecrets(uid);
+
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
       client_secret: clientSecret,
@@ -112,18 +78,21 @@ async function refreshAccessToken() {
       refresh_token: refreshToken,
     });
 
-    accessToken = response.data.access_token;
-    refreshToken = response.data.refresh_token;
-    expiresAt = response.data.expires_at;
+    // Update user secrets in Firestore with new tokens
+    await updateUserSecrets(uid, {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      expiresAt: response.data.expires_at,
+    });
 
-    console.log('New Access Token:', accessToken);
-    console.log('New Refresh Token:', refreshToken);
-    console.log('Expires At:', expiresAt);
+    console.log('New Access Token:', response.data.access_token);
+    console.log('New Refresh Token:', response.data.refresh_token);
+    console.log('Expires At:', response.data.expires_at);
 
     return {
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      expiresAt: expiresAt,
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      expiresAt: response.data.expires_at,
     };
   } catch (error) {
     console.error('Error refreshing access token:', error);
@@ -131,22 +100,7 @@ async function refreshAccessToken() {
   }
 }
 
-// Function to update .env file with new tokens
-function updateEnvFile() {
-  const fs = require('fs');
-  const envData = `
-CLIENT_ID=${clientId}
-CLIENT_SECRET=${clientSecret}
-REDIRECT_URI=${redirectUri}
-ACCESS_TOKEN=${accessToken}
-REFRESH_TOKEN=${refreshToken}
-EXPIRES_AT=${expiresAt}
-`;
-
-  fs.writeFileSync('.env', envData);
-}
-
-// Schedule token refresh to run before expiration every hour 
+// Schedule token refresh to run before expiration every hour
 cron.schedule('0 * * * *', async () => {
   const currentTime = Math.floor(Date.now() / 1000);
   if (currentTime >= expiresAt - 300) { // Refresh 5 minutes before expiration
@@ -154,70 +108,11 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
-// Endpoint to handle the initial activity creation event and modify the activity if it meets the criteria - this is in reference to the strava webhook events API - https://developers.strava.com/docs/webhooks/
-app.post('/webhook', async (req, res) => {
-  const aspectType = req.body.aspect_type;
-  const objectId = req.body.object_id;
-  console.log("webhook event received!", req.query, req.body);
-
-  if (aspectType == 'create' || aspectType == 'update') {
-    try {
-      const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-	  
-      });
-	  
-      const { distance, type } = response.data;
-      console.log('On my way to update the privacy if needed:', distance);
-      if (distance < 5000 && type === 'Ride') {
-        await axios.put(`https://www.strava.com/api/v3/activities/${objectId}`, 
-          { hide_from_home: true }, 
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }
-        );
-        console.log('Privacy updated successfully');
-      }
-      else{
-        console.log("Nothing to update here")
-      }
-
-      return res.status(200).send('EVENT_RECEIVED');
-    } catch (error) {
-      console.error('Error:', error);
-      return res.status(500).send('Internal Server Error');
-    }
-  }
-
- 
-});
-
-// Endpoint for verifying webhook - Strava sends a request to this domain to see if the server is responsive before sending an event.
-app.get('/webhook', (req, res) => {
-  const VERIFY_TOKEN = "STRAVA";
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  if (mode && token && mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('WEBHOOK_VERIFIED');
-    return res.status(200).json({ "hub.challenge": challenge });
-  }
-
-  return res.status(403).send('Forbidden');
-});
-
 // Sets server port and logs message on success
-//const port = process.env.PORT || 80;
+const port = process.env.PORT || 80;
 app.listen(port, () => console.log(`Webhook is listening on port ${port}`));
 
 // Manually invoke the authorization URL
 app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
-
-})();
