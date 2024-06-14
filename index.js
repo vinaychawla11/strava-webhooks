@@ -147,3 +147,5 @@ app.listen(port, () => console.log(`Webhook is listening on port ${port}`));
 app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
+
+module.exports = app;
