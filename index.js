@@ -28,7 +28,15 @@ app.get('/authorize', authenticateUser, async (req, res) => {
   const userId = req.user.uid; // Get the user's UID from the authentication context
   // Retrieve user secrets from Firestore
   try {
-    const { clientId, clientSecret, redirectUri } = await getUserSecrets(userId);
+    const { clientId, clientSecret } = await getUserSecrets(userId);
+    const redirectUri= await getEnvVars();
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      await updateUserSecrets(userId,userDoc);
+    }
+    else {
+      await addNewUser(userId, userDoc);
+    }
     const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
     res.redirect(authorizationUrl);
   } catch (error) {
@@ -105,6 +113,46 @@ cron.schedule('0 * * * *', async () => {
   const currentTime = Math.floor(Date.now() / 1000);
   if (currentTime >= expiresAt - 300) { // Refresh 5 minutes before expiration
     await refreshAccessToken();
+  }
+});
+// Endpoint to handle the initial activity creation event and modify the activity if it meets the criteria - this is in reference to the Strava webhook events API
+app.post('/webhook', async (req, res) => {
+  const aspectType = req.body.aspect_type;
+  const objectId = req.body.object_id;
+  console.log("Webhook event received!", req.query, req.body);
+
+  if (aspectType == 'create' || aspectType == 'update') {
+    try {
+      const { accessToken } = await getUserSecrets(userId); // Assuming you have a function to get access token for the user
+      const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      const { distance, type } = response.data;
+      console.log('On my way to update the privacy if needed:', distance);
+      if (distance < 5000 && type === 'Ride') {
+        await axios.put(`https://www.strava.com/api/v3/activities/${objectId}`, 
+          { hide_from_home: true }, 
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          }
+        );
+        console.log('Privacy updated successfully');
+      } else {
+        console.log("Nothing to update here");
+      }
+
+      return res.status(200).send('EVENT_RECEIVED');
+    } catch (error) {
+      console.error('Error:', error);
+      return res.status(500).send('Internal Server Error');
+    }
+  } else {
+    return res.status(200).send('Event type not handled');
   }
 });
 
