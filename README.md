@@ -1,14 +1,16 @@
 # Strava API Integration with Express.js
 
-This application integrates with the Strava API using Express.js to handle OAuth authorization, token management, and webhook events. The application supports periodic token refreshing using a cron job and updates activity privacy based on specific criteria.
+This repository provides an Express.js service to handle Strava OAuth2 authorization, manage user tokens, and process Strava webhook events. It includes automatic token refreshing and activity updates based on specific criteria.
 
 ## Features
 
-- OAuth authorization with Strava
-- Token management and refreshing
-- Handling Strava webhook events
-- Updating activity privacy based on distance and type
-- Secure credential management with Firebase Firestore
+This service provides an integration with the Strava API to:
+
+    Authorize users via OAuth2.
+    Handle OAuth2 callback and token exchange.
+    Manage user access and refresh tokens.
+    Process Strava webhook events to update activities based on criteria.
+    Automatically refresh access tokens.
 
 ## Prerequisites
 
@@ -16,8 +18,7 @@ This application integrates with the Strava API using Express.js to handle OAuth
 - npm (>=6.x)
 - A Strava Developer account
 - A registered Strava application
-- Firebase project with Firestore enabled
-- Service account key for Firebase Admin SDK
+
 
 ## Setup
 
@@ -33,35 +34,34 @@ cd strava-api-integration
 ```bash
 npm install
 ```
-
-### 3. Configure Firebase Firestore
-
-1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/).
-2. Enable Firestore in the project.
-3. Generate a service account key:
-    - Go to Project Settings -> Service accounts.
-    - Generate a new private key and download the JSON file.
-    - Save the JSON file in your project directory (e.g., `serviceAccountKey.json`).
-4. Add your Strava API credentials to Firestore:
-    - Go to Firestore Database in Firebase Console.
-    - Create a collection named `secrets`.
-    - Add a document with ID `strava-api-credentials` and fields `clientId`, `clientSecret`, `redirectUri`, and `port`.
-
-### 4. Create Environment Variables File
+### 3. Create Environment Variables File
 
 Create a `.env` file in the root of the project with the following content:
 
 ```plaintext
-PORT=your_server_port
+STRAVA_CLIENT_ID=your_strava_client_id
+STRAVA_CLIENT_SECRET=your_strava_client_secret
+REDIRECT_URI=your_redirect_uri
+SESSION_SECRET=your_generated_secret
+PORT=your_desired_port (optional, default is 80)
 ```
 
-### 5. Run the Application
+
+### 4. Run the Application
 
 ```bash
-node app.js
+node index.js
 ```
 
 The server will start listening on the specified port (default is 80).
+
+## Environment Variables
+
+    STRAVA_CLIENT_ID: Your Strava API client ID.
+    STRAVA_CLIENT_SECRET: Your Strava API client secret.
+    REDIRECT_URI: The URI Strava redirects to after authorization.
+    SESSION_SECRET: A secure secret for session handling.
+    PORT: Port to run the server (default: 80).
 
 ## Endpoints
 
@@ -104,10 +104,9 @@ This project is licensed under the MIT License.
 ### Additional Improvements and Addons
 
 1. **Error Handling**: Improve error handling and logging using libraries like `winston` for better insight into the application's behavior.
-2. **Security Enhancements**: Use `helmet` for securing HTTP headers and `express-rate-limit` for rate limiting requests.
-3. **Testing**: Add unit and integration tests to ensure the application works as expected.
-4. **CI/CD**: Set up continuous integration and deployment pipelines using tools like GitHub Actions, Travis CI, or Jenkins.
-5. **Documentation**: Expand the README to include more detailed setup instructions, examples, and API documentation.
-6. **Monitoring**: Integrate monitoring tools like Prometheus and Grafana to track the application's performance and health.
+2. **Testing**: Add unit and integration tests to ensure the application works as expected.
+3. **CI/CD**: Set up continuous integration and deployment pipelines using tools like GitHub Actions, Travis CI, or Jenkins.
+4. **Documentation**: Expand the README to include more detailed setup instructions, examples, and API documentation.
+5. **Monitoring**: Integrate monitoring tools like Prometheus and Grafana to track the application's performance and health.
 
 By incorporating these additional improvements, you can enhance the security, reliability, and maintainability of your project.
