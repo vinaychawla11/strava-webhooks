@@ -4,39 +4,28 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const cron = require('node-cron');
-const { getUserSecrets, updateUserSecrets, addNewUser, getEnvVars } = require('./firebaseUtils.js');
+const session = require('express-session');
+require('dotenv').config();
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Middleware to authenticate requests using Firebase Authentication
-const authenticateUser = async (req, res, next) => {
-  try {
-    const idToken = req.headers.authorization.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    req.user = decodedToken;
-    next();
-  } catch (error) {
-    console.error('Error authenticating user:', error);
-    res.status(401).send('Unauthorized');
-  }
-};
+// Set up session middleware with a secure secret
+app.use(session({
+  secret: process.env.SESSION_SECRET, // Use an environment variable for the session secret
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Set to true if using HTTPS
+}));
+
+const clientId = process.env.STRAVA_CLIENT_ID;
+const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+const redirectUri = process.env.REDIRECT_URI;
 
 // Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the Strava authorization URL.
-app.get('/authorize', authenticateUser, async (req, res) => {
-  const userId = req.user.uid; // Get the user's UID from the authentication context
-  // Retrieve user secrets from Firestore
+app.get('/authorize', async (req, res) => {
   try {
-    const { clientId, clientSecret } = await getUserSecrets(userId);
-    const redirectUri= await getEnvVars();
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (userDoc.exists) {
-      await updateUserSecrets(userId,userDoc);
-    }
-    else {
-      await addNewUser(userId, userDoc);
-    }
     const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
     res.redirect(authorizationUrl);
   } catch (error) {
@@ -46,13 +35,10 @@ app.get('/authorize', authenticateUser, async (req, res) => {
 });
 
 // Step 2: Handle the redirect Uri callback from Strava
-app.get('/callback', authenticateUser, async (req, res) => {
-  const userId = req.user.uid; // Get the user's UID from the authentication context
-  const authorizationCode = req.query.code; // Store the code obtained from the strava GET request
+app.get('/callback', async (req, res) => {
+  const authorizationCode = req.query.code; // Store the code obtained from the Strava GET request
 
   try {
-    const { clientId, clientSecret } = await getUserSecrets(userId);
-
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
       client_secret: clientSecret,
@@ -60,12 +46,10 @@ app.get('/callback', authenticateUser, async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    // Update user secrets in Firestore with new tokens
-    await updateUserSecrets(userId, {
-      accessToken: response.data.access_token,
-      refreshToken: response.data.refresh_token,
-      expiresAt: response.data.expires_at,
-    });
+    // Store tokens in session
+    req.session.accessToken = response.data.access_token;
+    req.session.refreshToken = response.data.refresh_token;
+    req.session.expiresAt = response.data.expires_at;
 
     res.send('Authorization successful! You can now close this window.');
   } catch (error) {
@@ -75,9 +59,9 @@ app.get('/callback', authenticateUser, async (req, res) => {
 });
 
 // Function to refresh the access token
-async function refreshAccessToken(uid) {
+async function refreshAccessToken(req) {
   try {
-    const { clientId, clientSecret, refreshToken } = await getUserSecrets(uid);
+    const { refreshToken } = req.session;
 
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
@@ -86,12 +70,10 @@ async function refreshAccessToken(uid) {
       refresh_token: refreshToken,
     });
 
-    // Update user secrets in Firestore with new tokens
-    await updateUserSecrets(uid, {
-      accessToken: response.data.access_token,
-      refreshToken: response.data.refresh_token,
-      expiresAt: response.data.expires_at,
-    });
+    // Update session with new tokens
+    req.session.accessToken = response.data.access_token;
+    req.session.refreshToken = response.data.refresh_token;
+    req.session.expiresAt = response.data.expires_at;
 
     console.log('New Access Token:', response.data.access_token);
     console.log('New Refresh Token:', response.data.refresh_token);
@@ -111,19 +93,20 @@ async function refreshAccessToken(uid) {
 // Schedule token refresh to run before expiration every hour
 cron.schedule('0 * * * *', async () => {
   const currentTime = Math.floor(Date.now() / 1000);
-  if (currentTime >= expiresAt - 300) { // Refresh 5 minutes before expiration
-    await refreshAccessToken();
+  if (req.session && currentTime >= req.session.expiresAt - 300) { // Refresh 5 minutes before expiration
+    await refreshAccessToken(req);
   }
 });
+
 // Endpoint to handle the initial activity creation event and modify the activity if it meets the criteria - this is in reference to the Strava webhook events API
 app.post('/webhook', async (req, res) => {
   const aspectType = req.body.aspect_type;
   const objectId = req.body.object_id;
   console.log("Webhook event received!", req.query, req.body);
 
-  if (aspectType == 'create' || aspectType == 'update') {
+  if (aspectType === 'create' || aspectType === 'update') {
     try {
-      const { accessToken } = await getUserSecrets(userId); // Assuming you have a function to get access token for the user
+      const { accessToken } = req.session;
       const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`

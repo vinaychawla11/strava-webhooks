@@ -28,15 +28,19 @@ async function updateUserSecrets(uid, newSecrets) {
   await userRef.update(newSecrets);
 }
 
+const { v4: uuidv4 } = require('uuid');
+
 // Function to add a new user to Firestore if not already present
-async function addNewUser(uid, userData) {
+async function addNewUser(userData) {
+  const uid = uuidv4(); // Generate a random UUID for the user
   const userRef = db.collection('users').doc(uid);
   const userDoc = await userRef.get();
 
   if (!userDoc.exists) {
-    await userRef.set(userData);
+    await userRef.set({ ...userData, uid }); // Include the generated uid in the user data
   }
 }
+
 
 // Function to fetch environment variables dynamically
 function getEnvVars() {
