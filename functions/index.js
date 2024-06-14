@@ -1,6 +1,10 @@
-'use strict';
-
+const express = require('express');
 const serverless = require('serverless-http');
-const app = require('../src/api/index.js'); // Adjust the path to your Express app
+const app = require('../src/api/index.js');
 
-module.exports.handler = serverless(app);
+const router = express.Router();
+router.use('/', app);
+
+module.exports = {
+  handler: serverless(router),
+};
