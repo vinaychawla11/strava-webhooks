@@ -7,12 +7,13 @@
     "build": "netlify-lambda build src"
   },
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^1.7.2",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
-    "node-cron": "^2.0.3"
+    "node-cron": "^2.0.3",
+    "serverless-http": "^3.2.0"
   },
   "devDependencies": {
-    "netlify-lambda": "^2.0.0"
+    "netlify-lambda": "^2.0.16"
   }
 }
