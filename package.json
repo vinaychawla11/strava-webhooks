@@ -1,5 +1,5 @@
 {
-  "name": "strava-authorization-service",
+  "name": "strava-autohide",
   "version": "1.0.0",
   "main": "src/api/index.js",
   "scripts": {
