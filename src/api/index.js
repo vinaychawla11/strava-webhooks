@@ -148,4 +148,3 @@ app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
 
-app.use('/.netlify/functions/index', router);
