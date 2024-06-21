@@ -46,10 +46,3 @@
         }
 
     }
-    const authorizeLink = document.getElementById('header-content');
-
-   
-    authorizeLink.addEventListener('click', (event) => {
-        event.preventDefault();
-        mainContent.scrollIntoView({ behavior: 'smooth' });
-    });
