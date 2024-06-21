@@ -47,7 +47,7 @@ app.get('/authorize', async (req, res) => {
 // Step 2: Handle the redirect Uri callback from Strava
 app.get('/callback', async (req, res) => {
   const authorizationCode = req.query.code; // Store the code obtained from the Strava GET request
-  console.log(authorizationCode);
+  console.log(`authorizationCode`);
   try {
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
