@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strava Autohide from Home</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const lightButton = document.getElementById("light");
+            const darkButton = document.getElementById("dark");
+            const solarButton = document.getElementById("solar");
+            const body = document.body;
+
+
+            // Apply cached item on reload
+            const theme = localStorage.getItem('theme');
+            const isSolar = localStorage.getItem('isSolar');
+
+            if (theme) {
+                body.classList.add(theme);
+                isSolar && body.classList.add('solar');
+            }
+
+            darkButton.onclick = () => {
+                body.classList.replace('light', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+
+            lightButton.onclick = () => {
+                body.classList.replace('dark', 'light');
+                localStorage.setItem('theme', 'light');
+
+            }
+
+            solarButton.onclick = () => {
+                if (body.classList.contains('solar')) {
+                    body.classList.remove('solar')
+                    solarButton.style.cssText = `
+            --bg-solar: var(--yellow);
+            `
+
+                    solarButton.innerText = 'solarize';
+                    localStorage.remove('isSolar');
+                }
+                else {
+                    solarButton.style.cssText = `
+        --bg-solar: white;
+    `
+
+
+                    body.classList.add('solar');
+                    solarButton.innerText = 'normalize';
+                    localStorage.setItem('isSolar', true);
+
+                }
+
+            }
+            const authorizeLink = document.getElementById('main-content');
+
+            themeLinks.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    document.body.className = event.target.id;
+                });
+            });
+
+           
+            authorizeLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                mainContent.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</head>
+
+<body class="light">
+
+    <nav class="navbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a href="#">Home</a>
+            </li>
+            <li class="nav-item">Authorize</li>
+
+            <!--Dropdown-->
+
+            <li class="nav-item has-dropdown">
+                <a href="#">Theme</a>
+                <ul class="dropdown">
+                    <li class="dropdown-item">
+                        <a id="light" href="#">light</a>
+                    </li>
+                    <li class="dropdown-item">
+                        <a id="dark" href="#">dark</a>
+                    </li>
+                    <li class="dropdown-item">
+                        <a id="solar" href="#">solar</a>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item">Login</li>
+        </ul>
+    </nav>
+    <header>
+        <img src="logo.webp" class="logo">
+        <h1>Details</h1>
+        <p>This currently only works at the user level since the Strava API endpoint for updating activity details does
+            not expose privacy.</p>
+        <p>https://developers.strava.com/playground/#/Activities/updateActivityById
+
+            Below are the fields that can be modified by the `update activity` endpoint.
+            {
+            "commute": true,
+            "trainer": true,
+            "hide_from_home": true,
+            "description": "string",
+            "name": "string",
+            "type": "AlpineSki",
+            "sport_type": "AlpineSki",
+            "gear_id": "string"
+            }</p>
+    </header>
+    <main id="main-content">
+        <h1>Strava Authorization</h1>
+        <p><a href="/authorize">Authorize with Strava</a></p>
+    </main>
+</body>
+
+</html>
