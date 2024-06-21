@@ -11,6 +11,6 @@ services:
       - key: STRAVA_CLIENT_SECRET
         value: ac2b07ab6d11cad97c411c963271a2f807ffeedb
       - key: REDIRECT_URI
-        value: https://strava-webhooks-p28j.onrender.com/
+        value: https://strava-webhooks-p28j.onrender.com
       - key: SESSION_SECRET
         value: "Asperagus!"
