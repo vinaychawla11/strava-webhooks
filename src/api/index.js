@@ -60,6 +60,10 @@ app.get('/callback', async (req, res) => {
     req.session.refreshToken = response.data.refresh_token;
     req.session.expiresAt = response.data.expires_at;
 
+    console.log('New Access Token:', response.data.access_token);
+    console.log('New Refresh Token:', response.data.refresh_token);
+    console.log('Expires At:', response.data.expires_at);
+
     res.send('Authorization successful! You can now close this window.');
   } catch (error) {
     console.error('Error exchanging authorization code:', error);
