@@ -22,6 +22,26 @@ This service provides an integration with the Strava API to:
 
 ## Setup
 
+To use the application :
+
+    Clone this repository to your local machine.
+    Install dependencies using npm install.
+    Set up the necessary environment variables in a .env file:
+```plaintext
+REDIRECT_URI=http://strava-webhooks-p28j.onrender.com/callback
+STRAVA_CLIENT_ID=88569
+STRAVA_CLIENT_SECRET=ac2b07ab6d11cad97c411c963271a2f807ffeedb
+SESSION_SECRET="Asperagus!"`
+
+```
+
+Start the development server using npm start.
+
+
+## Local Setup
+
+If you wish to emulate this locally, follow the steps below:
+
 ### 1. Clone the Repository
 
 ```bash
@@ -92,9 +112,11 @@ The application processes create and update events from Strava to fetch activity
 
 ## Example Usage
 
-1. **Start the Authorization Process**: Navigate to `http://your-server-url/` and click the "Authorize with Strava" link.
-2. **Complete Authorization**: Authorize the application on Strava, which will redirect you back to your server.
-3. **Webhook Events**: Configure your Strava application to send webhook events to `http://your-server-url/webhook`.
+    Access the application at https://strava-webhooks-p28j.onrender.com/.
+    Click on "Authorize with Strava" to initiate the authorization process.
+    Grant the necessary permissions to the app.
+    Upon successful authorization, you will be redirected back to the app.
+    The app will handle Strava webhook events and update activity details accordingly.
 
 ## License
 
