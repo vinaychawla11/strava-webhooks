@@ -56,8 +56,8 @@ app.get('/callback', async (req, res) => {
     });
 
     // Store tokens in session
-    req.session.accessToken = response.data.access_token;
-    req.session.refreshToken = response.data.refresh_token;
+    req.session.access_token = response.data.access_token;
+    req.session.refresh_token = response.data.refresh_token;
     req.session.expiresAt = response.data.expires_at;
 
     console.log('New Access Token:', response.data.access_token);
@@ -84,8 +84,8 @@ async function refreshAccessToken(req) {
     });
 
     // Update session with new tokens
-    req.session.accessToken = response.data.access_token;
-    req.session.refreshToken = response.data.refresh_token;
+    req.session.access_token = response.data.access_token;
+    req.session.refresh_token = response.data.refresh_token;
     req.session.expiresAt = response.data.expires_at;
 
     console.log('New Access Token:', response.data.access_token);
@@ -93,8 +93,8 @@ async function refreshAccessToken(req) {
     console.log('Expires At:', response.data.expires_at);
 
     return {
-      accessToken: response.data.access_token,
-      refreshToken: response.data.refresh_token,
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
       expiresAt: response.data.expires_at,
     };
   } catch (error) {
@@ -119,10 +119,13 @@ app.post('/webhook', async (req, res) => {
 
   if (aspectType === 'create' || aspectType === 'update') {
     try {
-      const { accessToken } = req.session;
+      const { access_token } = req.session;
+      console.log("access token", access_token)
+      console.log('Access Token:', access_token);
+  
       const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${access_token}`
         }
       });
 
@@ -133,7 +136,7 @@ app.post('/webhook', async (req, res) => {
           { hide_from_home: true }, 
           {
             headers: {
-              'Authorization': `Bearer ${accessToken}`
+              'Authorization': `Bearer ${access_token}`
             }
           }
         );
