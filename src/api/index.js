@@ -23,6 +23,14 @@ const clientId = process.env.STRAVA_CLIENT_ID;
 const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 const redirectUri = process.env.REDIRECT_URI;
 
+app.use(express.static('public'));
+
+// Serve the index.html file
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
+
+
 // Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the Strava authorization URL.
 app.get('/authorize', async (req, res) => {
   try {
