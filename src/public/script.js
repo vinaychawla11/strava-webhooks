@@ -46,14 +46,7 @@
         }
 
     }
-    const authorizeLink = document.getElementById('main-content');
-
-    themeLinks.forEach(link => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-            document.body.className = event.target.id;
-        });
-    });
+    const authorizeLink = document.getElementById('header-content');
 
    
     authorizeLink.addEventListener('click', (event) => {

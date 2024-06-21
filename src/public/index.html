@@ -35,30 +35,32 @@
                     </li>
                 </ul>
             </li>
-            <li class="nav-item">Login</li>
         </ul>
     </nav>
-    <header>
-        <img src="./logo.webp" class="logo">
-        <h1>Details</h1>
+    <header id="header-content">
+        <img src="./logo-no-background.png" class="logo">
+        <h1>
+            <a href="/authorize">Authorize with Strava</a>
+        </h1>
+        
+    </header>
+    <main id="main-content">
+        <h1> Details </h1>
         <p>This currently only works at the user level since the Strava API endpoint for updating activity details does
             not expose privacy.</p>
-        <p>https://developers.strava.com/playground/#/Activities/updateActivityById
+        <p><a href="https://developers.strava.com/playground/#/Activities/updateActivityById"></a>
 
             Below are the fields that can be modified by the `update activity` endpoint.
             {
-            "commute": true,
-            "trainer": true,
-            "hide_from_home": true,
-            "description": "string",
-            "name": "string",
-            "type": "AlpineSki",
-            "sport_type": "AlpineSki",
-            "gear_id": "string"
+            "commute": true, <br>
+            "trainer": true, <br>
+            "hide_from_home": true, <br>
+            "description": "string", <br>
+            "name": "string", <br>
+            "type": "AlpineSki", <br>
+            "sport_type": "AlpineSki", <br>
+            "gear_id": "string" <br>
             }</p>
-    </header>
-    <main id="main-content">
-        <h1>Strava Authorization</h1>
         <p><a href="/authorize">Authorize with Strava</a></p>
     </main>
 </body>
