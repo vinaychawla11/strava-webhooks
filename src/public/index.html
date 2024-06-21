@@ -6,6 +6,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strava Autohide from Home</title>
     <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body class="light">
+
+    <nav class="navbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a href="#">Home</a>
+            </li>
+            <li class="nav-item">
+                <a href="#">Authorize</a>
+            </li>
+            <!--Dropdown-->
+
+            <li class="nav-item has-dropdown">
+                <a href="#">Theme</a>
+                <ul class="dropdown">
+                    <li class="dropdown-item">
+                        <a id="light" href="#">light</a>
+                    </li>
+                    <li class="dropdown-item">
+                        <a id="dark" href="#">dark</a>
+                    </li>
+                    <li class="dropdown-item">
+                        <a id="solar" href="#">solar</a>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item">Login</li>
+        </ul>
+    </nav>
+    <header>
+        <img src="./logo.webp" class="logo">
+        <h1>Details</h1>
+        <p>This currently only works at the user level since the Strava API endpoint for updating activity details does
+            not expose privacy.</p>
+        <p>https://developers.strava.com/playground/#/Activities/updateActivityById
+
+            Below are the fields that can be modified by the `update activity` endpoint.
+            {
+            "commute": true,
+            "trainer": true,
+            "hide_from_home": true,
+            "description": "string",
+            "name": "string",
+            "type": "AlpineSki",
+            "sport_type": "AlpineSki",
+            "gear_id": "string"
+            }</p>
+    </header>
+    <main id="main-content">
+        <h1>Strava Authorization</h1>
+        <p><a href="/authorize">Authorize with Strava</a></p>
+    </main>
     <script defer>
         document.addEventListener('DOMContentLoaded', function () {
 
@@ -74,60 +128,6 @@
             });
         });
     </script>
-</head>
-
-<body class="light">
-
-    <nav class="navbar">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a href="#">Home</a>
-            </li>
-            <li class="nav-item">
-                <a href="#">Authorize</a>
-            </li>
-            <!--Dropdown-->
-
-            <li class="nav-item has-dropdown">
-                <a href="#">Theme</a>
-                <ul class="dropdown">
-                    <li class="dropdown-item">
-                        <a id="light" href="#">light</a>
-                    </li>
-                    <li class="dropdown-item">
-                        <a id="dark" href="#">dark</a>
-                    </li>
-                    <li class="dropdown-item">
-                        <a id="solar" href="#">solar</a>
-                    </li>
-                </ul>
-            </li>
-            <li class="nav-item">Login</li>
-        </ul>
-    </nav>
-    <header>
-        <img src="./logo.webp" class="logo">
-        <h1>Details</h1>
-        <p>This currently only works at the user level since the Strava API endpoint for updating activity details does
-            not expose privacy.</p>
-        <p>https://developers.strava.com/playground/#/Activities/updateActivityById
-
-            Below are the fields that can be modified by the `update activity` endpoint.
-            {
-            "commute": true,
-            "trainer": true,
-            "hide_from_home": true,
-            "description": "string",
-            "name": "string",
-            "type": "AlpineSki",
-            "sport_type": "AlpineSki",
-            "gear_id": "string"
-            }</p>
-    </header>
-    <main id="main-content">
-        <h1>Strava Authorization</h1>
-        <p><a href="/authorize">Authorize with Strava</a></p>
-    </main>
 </body>
 
 </html>
