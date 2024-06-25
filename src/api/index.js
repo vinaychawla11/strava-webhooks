@@ -6,7 +6,7 @@ const axios = require('axios');
 const cron = require('node-cron');
 const path = require('path');
 const fs = require('fs');
-const nodeEncrypt = require('node-encrypt');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -18,8 +18,9 @@ const clientId = process.env.STRAVA_CLIENT_ID;
 const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 const redirectUri = process.env.REDIRECT_URI;
 
-// Encryption key
+// Encryption key and algorithm
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const algorithm = 'aes-256-cbc';
 
 // Ensure tokens directory exists
 const tokensDir = './tokens';
@@ -27,9 +28,25 @@ if (!fs.existsSync(tokensDir)){
     fs.mkdirSync(tokensDir);
 }
 
+// Function to encrypt data
+function encryptData(data) {
+    const cipher = crypto.createCipher(algorithm, ENCRYPTION_KEY);
+    let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return encrypted;
+}
+
+// Function to decrypt data
+function decryptData(encryptedData) {
+    const decipher = crypto.createDecipher(algorithm, ENCRYPTION_KEY);
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return JSON.parse(decrypted);
+}
+
 // Function to save tokens
 function saveTokens(ownerId, tokens) {
-    const encryptedTokens = nodeEncrypt(JSON.stringify(tokens), ENCRYPTION_KEY);
+    const encryptedTokens = encryptData(tokens);
     fs.writeFileSync(`${tokensDir}/${ownerId}.enc`, encryptedTokens);
 }
 
@@ -37,12 +54,20 @@ function saveTokens(ownerId, tokens) {
 function getTokens(ownerId) {
     try {
         const encryptedTokens = fs.readFileSync(`${tokensDir}/${ownerId}.enc`, 'utf8');
-        return JSON.parse(nodeEncrypt.decrypt(encryptedTokens, ENCRYPTION_KEY));
+        return decryptData(encryptedTokens);
     } catch (error) {
         console.error('Error reading tokens:', error);
         return null;
     }
 }
+
+// Function to get all owner IDs
+function getAllOwnerIds() {
+    return fs.readdirSync(tokensDir)
+        .filter(file => file.endsWith('.enc'))
+        .map(file => file.replace('.enc', ''));
+}
+
 
 // Function to get all owner IDs
 function getAllOwnerIds() {
