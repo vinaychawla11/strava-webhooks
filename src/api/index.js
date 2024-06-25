@@ -5,27 +5,58 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const cron = require('node-cron');
 const path = require('path');
-const cookieParser = require('cookie-parser');
+const NodeEncrypt = require('node-encrypt');
+const fs = require('fs');
 require('dotenv').config();
+
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 const clientId = process.env.STRAVA_CLIENT_ID;
 const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 const redirectUri = process.env.REDIRECT_URI;
 
-//serve static files from public directory
+// Initialize NodeEncrypt with a secret key
+const encryptor = new NodeEncrypt(process.env.ENCRYPTION_KEY);
+
+// Ensure tokens directory exists
+const tokensDir = './tokens';
+if (!fs.existsSync(tokensDir)){
+    fs.mkdirSync(tokensDir);
+}
+
+// Function to save tokens
+function saveTokens(ownerId, tokens) {
+  const encryptedTokens = encryptor.encrypt(JSON.stringify(tokens));
+  fs.writeFileSync(`${tokensDir}/${ownerId}.enc`, encryptedTokens);
+}
+
+// Function to get tokens
+function getTokens(ownerId) {
+  try {
+    const encryptedTokens = fs.readFileSync(`${tokensDir}/${ownerId}.enc`, 'utf8');
+    return JSON.parse(encryptor.decrypt(encryptedTokens));
+  } catch (error) {
+    console.error('Error reading tokens:', error);
+    return null;
+  }
+}
+
+// Function to get all owner IDs
+function getAllOwnerIds() {
+  return fs.readdirSync(tokensDir)
+    .filter(file => file.endsWith('.enc'))
+    .map(file => file.replace('.enc', ''));
+}
+
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve the index.html file
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
-// Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the Strava authorization URL.
 app.get('/authorize', async (req, res) => {
   try {
     const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
@@ -36,9 +67,8 @@ app.get('/authorize', async (req, res) => {
   }
 });
 
-// Step 2: Handle the redirect Uri callback from Strava
 app.get('/callback', async (req, res) => {
-  const authorizationCode = req.query.code; // Store the code obtained from the Strava GET request
+  const authorizationCode = req.query.code;
   try {
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
@@ -47,10 +77,13 @@ app.get('/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    // Store tokens in cookies
-    res.cookie('access_token', response.data.access_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-    res.cookie('refresh_token', response.data.refresh_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-    res.cookie('expires_at', response.data.expires_at, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    const ownerId = response.data.athlete.id;
+
+    saveTokens(ownerId, {
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
+      expires_at: response.data.expires_at,
+    });
 
     console.log('New Access Token:', response.data.access_token);
     console.log('New Refresh Token:', response.data.refresh_token);
@@ -63,26 +96,25 @@ app.get('/callback', async (req, res) => {
   }
 });
 
-// Function to refresh the access token
-async function refreshAccessToken(req, res) {
+async function refreshAccessToken(ownerId) {
   try {
-    const refreshToken = req.cookies.refresh_token;
-
-    if (!refreshToken) {
-      throw new Error('Refresh token not found');
+    const tokens = getTokens(ownerId);
+    if (!tokens) {
+      throw new Error('Tokens not found');
     }
 
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: 'refresh_token',
-      refresh_token: refreshToken,
+      refresh_token: tokens.refresh_token,
     });
 
-    // Update cookies with new tokens
-    res.cookie('access_token', response.data.access_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-    res.cookie('refresh_token', response.data.refresh_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-    res.cookie('expires_at', response.data.expires_at, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    saveTokens(ownerId, {
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
+      expires_at: response.data.expires_at,
+    });
 
     console.log('New Access Token:', response.data.access_token);
     console.log('New Refresh Token:', response.data.refresh_token);
@@ -99,30 +131,32 @@ async function refreshAccessToken(req, res) {
   }
 }
 
-// Schedule token refresh to run before expiration every hour
 cron.schedule('0 * * * *', async () => {
   const currentTime = Math.floor(Date.now() / 1000);
-  if (req.cookies.expires_at && currentTime >= req.cookies.expires_at - 300) { // Refresh 5 minutes before expiration
-    await refreshAccessToken(req, res);
+  const ownerIds = getAllOwnerIds();
+  for (const ownerId of ownerIds) {
+    const tokens = getTokens(ownerId);
+    if (tokens && currentTime >= tokens.expires_at - 300) {
+      await refreshAccessToken(ownerId);
+    }
   }
 });
 
-// Endpoint to handle the initial activity creation event and modify the activity if it meets the criteria - this is in reference to the Strava webhook events API
 app.post('/webhook', async (req, res) => {
   const aspectType = req.body.aspect_type;
   const objectId = req.body.object_id;
+  const ownerId = req.body.owner_id;
   console.log("Webhook event received!", req.query, req.body);
 
   if (aspectType === 'create' || aspectType === 'update') {
     try {
-      const access_token = req.cookies.access_token;
-
-      if (!access_token) {
-        throw new Error('Access token not found');
+      const tokens = getTokens(ownerId);
+      if (!tokens) {
+        throw new Error('Tokens not found');
       }
 
+      const access_token = tokens.access_token;
       console.log("access token", access_token);
-      console.log('Access Token:', access_token);
 
       const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
         headers: {
@@ -156,11 +190,9 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Sets server port and logs message on success
 const port = process.env.PORT || 80;
 app.listen(port, () => console.log(`Webhook is listening on port ${port}`));
 
-// Manually invoke the authorization URL
 app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
