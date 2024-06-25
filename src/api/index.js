@@ -30,16 +30,18 @@ if (!fs.existsSync(tokensDir)){
 
 // Function to encrypt data
 function encryptData(data) {
-    const cipher = crypto.createCipher(algorithm, ENCRYPTION_KEY);
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(algorithm, Buffer.from(ENCRYPTION_KEY), iv);
     let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return encrypted;
+    return iv.toString('hex') + ':' + encrypted;
 }
 
 // Function to decrypt data
 function decryptData(encryptedData) {
-    const decipher = crypto.createDecipher(algorithm, ENCRYPTION_KEY);
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+    const [iv, encryptedText] = encryptedData.split(':');
+    const decipher = crypto.createDecipheriv(algorithm, Buffer.from(ENCRYPTION_KEY), Buffer.from(iv, 'hex'));
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return JSON.parse(decrypted);
 }
@@ -60,14 +62,6 @@ function getTokens(ownerId) {
         return null;
     }
 }
-
-// Function to get all owner IDs
-function getAllOwnerIds() {
-    return fs.readdirSync(tokensDir)
-        .filter(file => file.endsWith('.enc'))
-        .map(file => file.replace('.enc', ''));
-}
-
 
 // Function to get all owner IDs
 function getAllOwnerIds() {
