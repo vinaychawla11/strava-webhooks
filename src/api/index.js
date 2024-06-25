@@ -4,36 +4,25 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const cron = require('node-cron');
-const session = require('express-session');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Set up session middleware with a secure secret
-app.use(session({
-  secret: process.env.SESSION_SECRET, // Use an environment variable for the session secret
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } // Set to true if using HTTPS
-}));
+app.use(cookieParser());
 
 const clientId = process.env.STRAVA_CLIENT_ID;
 const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 const redirectUri = process.env.REDIRECT_URI;
 
-//serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve the index.html file
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
-
-// Step 1: When a https request is made to the /authorize endpoint, it redirects the user to the Strava authorization URL.
 app.get('/authorize', async (req, res) => {
   try {
     const authorizationUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read_all,activity:read_all,activity:write&approval_prompt=auto`;
@@ -44,9 +33,8 @@ app.get('/authorize', async (req, res) => {
   }
 });
 
-// Step 2: Handle the redirect Uri callback from Strava
 app.get('/callback', async (req, res) => {
-  const authorizationCode = req.query.code; // Store the code obtained from the Strava GET request
+  const authorizationCode = req.query.code;
   try {
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
@@ -55,10 +43,10 @@ app.get('/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    // Store tokens in session
-    req.session.access_token = response.data.access_token;
-    req.session.refresh_token = response.data.refresh_token;
-    req.session.expiresAt = response.data.expires_at;
+    // Set tokens in HttpOnly cookies
+    res.cookie('access_token', response.data.access_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    res.cookie('refresh_token', response.data.refresh_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    res.cookie('expires_at', response.data.expires_at, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
 
     console.log('New Access Token:', response.data.access_token);
     console.log('New Refresh Token:', response.data.refresh_token);
@@ -71,10 +59,9 @@ app.get('/callback', async (req, res) => {
   }
 });
 
-// Function to refresh the access token
-async function refreshAccessToken(req) {
+async function refreshAccessToken(req, res) {
   try {
-    const { refreshToken } = req.session;
+    const refreshToken = req.cookies.refresh_token;
 
     const response = await axios.post('https://www.strava.com/oauth/token', {
       client_id: clientId,
@@ -83,10 +70,10 @@ async function refreshAccessToken(req) {
       refresh_token: refreshToken,
     });
 
-    // Update session with new tokens
-    req.session.access_token = response.data.access_token;
-    req.session.refresh_token = response.data.refresh_token;
-    req.session.expiresAt = response.data.expires_at;
+    // Update cookies with new tokens
+    res.cookie('access_token', response.data.access_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    res.cookie('refresh_token', response.data.refresh_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    res.cookie('expires_at', response.data.expires_at, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
 
     console.log('New Access Token:', response.data.access_token);
     console.log('New Refresh Token:', response.data.refresh_token);
@@ -106,12 +93,11 @@ async function refreshAccessToken(req) {
 // Schedule token refresh to run before expiration every hour
 cron.schedule('0 * * * *', async () => {
   const currentTime = Math.floor(Date.now() / 1000);
-  if (req.session && currentTime >= req.session.expiresAt - 300) { // Refresh 5 minutes before expiration
-    await refreshAccessToken(req);
+  if (req.cookies.expires_at && currentTime >= req.cookies.expires_at - 300) { // Refresh 5 minutes before expiration
+    await refreshAccessToken(req, res);
   }
 });
 
-// Endpoint to handle the initial activity creation event and modify the activity if it meets the criteria - this is in reference to the Strava webhook events API
 app.post('/webhook', async (req, res) => {
   const aspectType = req.body.aspect_type;
   const objectId = req.body.object_id;
@@ -119,10 +105,8 @@ app.post('/webhook', async (req, res) => {
 
   if (aspectType === 'create' || aspectType === 'update') {
     try {
-      const { access_token } = req.session;
-      console.log("access token", access_token)
-      console.log('Access Token:', access_token);
-  
+      const access_token = req.cookies.access_token;
+
       const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
         headers: {
           'Authorization': `Bearer ${access_token}`
@@ -130,7 +114,6 @@ app.post('/webhook', async (req, res) => {
       });
 
       const { distance, type } = response.data;
-      console.log('On my way to update the privacy if needed:', distance);
       if (distance < 5000 && type === 'Ride') {
         await axios.put(`https://www.strava.com/api/v3/activities/${objectId}`, 
           { hide_from_home: true }, 
@@ -155,12 +138,9 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Sets server port and logs message on success
 const port = process.env.PORT || 80;
 app.listen(port, () => console.log(`Webhook is listening on port ${port}`));
 
-// Manually invoke the authorization URL
 app.get('/', (req, res) => {
   res.send('<a href="/authorize">Authorize with Strava</a>');
 });
-
