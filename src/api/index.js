@@ -106,7 +106,7 @@ app.post('/webhook', async (req, res) => {
   if (aspectType === 'create' || aspectType === 'update') {
     try {
       const access_token = req.cookies.access_token;
-
+      console.log(access_token);
       const response = await axios.get(`https://www.strava.com/api/v3/activities/${objectId}`, {
         headers: {
           'Authorization': `Bearer ${access_token}`
