@@ -6,11 +6,22 @@ const axios = require('axios');
 const cron = require('node-cron');
 const path = require('path');
 const admin = require('firebase-admin');
+const fs = require('fs');
+const markdownIt = require('markdown-it')();
 require('dotenv').config();
 
 const app = express();
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+
+
+
+// Read README.md file
+const readmePath = path.join(__dirname, '../../README.md');
+const readmeContent = fs.readFileSync(readmePath, 'utf8');
+
+// Convert Markdown to HTML
+const readmeHtml = markdownIt.render(readmeContent);
 
 // Initialize Firebase Admin SDK with the service account
 admin.initializeApp({
@@ -205,6 +216,37 @@ app.post('/webhook', async (req, res) => {
   } else {
     res.status(200).send('Event type not handled');
   }
+});
+
+app.get('/readme', (req, res) => {
+  // Read README.md file
+  const readmePath = path.join(__dirname, 'README.md');
+  const readmeContent = fs.readFileSync(readmePath, 'utf8');
+
+  // Convert Markdown to HTML
+  const readmeHtml = markdownIt.render(readmeContent);
+
+  // Serve the HTML content
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>README</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          padding: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      ${readmeHtml}
+    </body>
+    </html>
+  `);
 });
 
 const port = process.env.PORT || 80;
