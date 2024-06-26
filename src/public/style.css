@@ -34,7 +34,7 @@ a {
 
 header {
     padding: 1em;
-    background: red;
+    background: var(--blue);
     margin-bottom: 1em;
     padding-bottom: 3.5em;
     text-align: center;
