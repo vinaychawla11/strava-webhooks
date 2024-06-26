@@ -14,15 +14,6 @@ const app = express();
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 
-
-
-// Read README.md file
-const readmePath = path.join(__dirname, '../../README.md');
-const readmeContent = fs.readFileSync(readmePath, 'utf8');
-
-// Convert Markdown to HTML
-const readmeHtml = markdownIt.render(readmeContent);
-
 // Initialize Firebase Admin SDK with the service account
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -220,7 +211,7 @@ app.post('/webhook', async (req, res) => {
 
 app.get('/readme', (req, res) => {
   // Read README.md file
-  const readmePath = path.join(__dirname, 'README.md');
+  const readmePath = path.join(__dirname, '../../README.md');
   const readmeContent = fs.readFileSync(readmePath, 'utf8');
 
   // Convert Markdown to HTML
