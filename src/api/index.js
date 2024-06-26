@@ -88,7 +88,7 @@ app.get('/callback', async (req, res) => {
     });
 
     const ownerId = response.data.athlete.id;
-
+    console.log(ownerId," ownerId");
     // Save tokens to Firestore
     await saveTokens(ownerId, {
       access_token: response.data.access_token,
