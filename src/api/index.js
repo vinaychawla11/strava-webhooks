@@ -30,19 +30,30 @@ const redirectUri = process.env.REDIRECT_URI;
 
 // Function to save tokens in Firebase Firestore
 async function saveTokens(ownerId, tokens) {
-  const docRef = db.collection('secrets').doc(ownerId);
-  await docRef.set(tokens);
+  try {
+    const docRef = db.collection('secrets').doc(ownerId);
+    await docRef.set(tokens);
+    console.log('Tokens saved successfully for ownerId:', ownerId);
+  } catch (error) {
+    console.error('Error saving tokens:', error);
+    throw error;
+  }
 }
 
-// Function to get tokens from Firebase Firestore
+// Function to get tokens from Firestore
 async function getTokens(ownerId) {
-  const docRef = db.collection('secrets').doc(ownerId);
-  const doc = await docRef.get();
-  if (!doc.exists) {
-    console.error('No such document!');
-    return null;
-  } else {
-    return doc.data();
+  try {
+    const docRef = db.collection('secrets').doc(ownerId);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      console.error('No such document!');
+      return null;
+    } else {
+      return doc.data();
+    }
+  } catch (error) {
+    console.error('Error getting tokens:', error);
+    throw error;
   }
 }
 
