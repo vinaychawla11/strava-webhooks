@@ -6,11 +6,14 @@ This repository provides an Express.js service to handle Strava OAuth2 authoriza
 
 This service provides an integration with the Strava API to:
 
-    Authorize users via OAuth2.
+    Allows users to authorize the application with their Strava account.    
     Handle OAuth2 callback and token exchange.
-    Manage user access and refresh tokens.
+    Manages access tokens securely using Firebase Firestore.
+    Receives real-time updates for activity creation and updates from Strava via Strava webhook events API.
     Process Strava webhook events to update activities based on criteria.
     Automatically refresh access tokens.
+    ## Features
+
 
 ## Prerequisites
 
@@ -18,6 +21,8 @@ This service provides an integration with the Strava API to:
 - npm (>=6.x)
 - A Strava Developer account
 - A registered Strava application
+- Firebase project set up with Firestore database
+- Strava API credentials (Client ID, Client Secret obtained from the registered strava application)
 
 
 ## Setup
