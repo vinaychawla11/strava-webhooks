@@ -12,7 +12,7 @@ const app = express();
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 
-// Initialize Firebase Admin SDK with the service account and database URL
+// Initialize Firebase Admin SDK with the service account
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -30,8 +30,7 @@ const redirectUri = process.env.REDIRECT_URI;
 // Function to save tokens in Firebase Firestore
 async function saveTokens(ownerId, tokens) {
   try {
-    console.log(ownerId);
-    const docRef = db.collection('secrets').doc(ownerId);
+    const docRef = db.collection('secrets').doc(String(ownerId)); // Convert ownerId to string
     await docRef.set(tokens);
     console.log('Tokens saved successfully for ownerId:', ownerId);
   } catch (error) {
@@ -43,7 +42,7 @@ async function saveTokens(ownerId, tokens) {
 // Function to get tokens from Firestore
 async function getTokens(ownerId) {
   try {
-    const docRef = db.collection('secrets').doc(str(ownerId));
+    const docRef = db.collection('secrets').doc(String(ownerId)); // Convert ownerId to string
     const doc = await docRef.get();
     if (!doc.exists) {
       console.error('No such document!');
@@ -87,8 +86,8 @@ app.get('/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    const ownerId = response.data.athlete.id;
-    console.log(ownerId," ownerId");
+    const ownerId = String(response.data.athlete.id); // Convert ownerId to string
+
     // Save tokens to Firestore
     await saveTokens(ownerId, {
       access_token: response.data.access_token,
@@ -100,6 +99,8 @@ app.get('/callback', async (req, res) => {
     console.log('New Refresh Token:', response.data.refresh_token);
     console.log('Expires At:', response.data.expires_at);
 
+    // Redirect or send response as per your application's flow
+    res.send('Tokens saved successfully!');
   } catch (error) {
     console.error('Error exchanging authorization code:', error);
     res.status(500).send('Internal Server Error');
@@ -159,7 +160,7 @@ cron.schedule('0 * * * *', async () => {
 app.post('/webhook', async (req, res) => {
   const aspectType = req.body.aspect_type;
   const objectId = req.body.object_id;
-  const ownerId = req.body.owner_id;
+  const ownerId = String(req.body.owner_id); // Convert ownerId to string
 
   console.log("Webhook event received:", req.body);
 
@@ -206,10 +207,5 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-
 const port = process.env.PORT || 80;
 app.listen(port, () => console.log(`Webhook is listening on port ${port}`));
-
-/*app.get('/', (req, res) => {
-    res.send('<a href="/authorize">Authorize with Strava</a>');
-});*/
