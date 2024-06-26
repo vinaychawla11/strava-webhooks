@@ -43,7 +43,7 @@ async function saveTokens(ownerId, tokens) {
 // Function to get tokens from Firestore
 async function getTokens(ownerId) {
   try {
-    const docRef = db.collection('secrets').doc(ownerId);
+    const docRef = db.collection('secrets').doc(str(ownerId));
     const doc = await docRef.get();
     if (!doc.exists) {
       console.error('No such document!');
