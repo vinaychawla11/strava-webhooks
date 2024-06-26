@@ -89,11 +89,6 @@ app.get('/callback', async (req, res) => {
     console.log('New Refresh Token:', response.data.refresh_token);
     console.log('Expires At:', response.data.expires_at);
 
-    res.json({
-      access_token: response.data.access_token,
-      expires_at: response.data.expires_at,
-      owner_id: ownerId
-    });
   } catch (error) {
     console.error('Error exchanging authorization code:', error);
     res.status(500).send('Internal Server Error');
