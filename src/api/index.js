@@ -30,7 +30,7 @@ const redirectUri = process.env.REDIRECT_URI;
 // Function to save tokens in Firebase Firestore
 async function saveTokens(ownerId, tokens) {
   try {
-    console.log("ownerId");
+    console.log(ownerId);
     const docRef = db.collection('secrets').doc(ownerId);
     await docRef.set(tokens);
     console.log('Tokens saved successfully for ownerId:', ownerId);
